@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+
+<!-- Ultimate Game Stash file--> 
+<!-- For the regularly updating doc go to https://docs.google.com/document/d/1_FmH3BlSBQI7FGgAQL59-ZPe8eCxs35wel6JUyVaG8Q/ -->
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <base href="https://cdn.jsdelivr.net/gh/bubbls/UGS-Assets@main/airline-tycoon-idle/">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/gh/bubbls/UGS-Assets@cd4f4dfa410ede318dd4248ff5ffa94083249cd8/toy-rider/cg-sdk.js#L4"></script>
+    <script defer="defer" src="./static/js/main.62c4c53d.js"></script>
+    <link href="./static/css/main.e41eb11c.css" rel="stylesheet">
+    <link rel="canonical" href="https://www.crazygames.com/game/airline-tycoon-idle">
+    <style>
+      #save-status {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        z-index: 9999;
+        background: rgba(0,0,0,0.7);
+        color: #7fff7f;
+        font-size: 12px;
+        font-family: sans-serif;
+        padding: 4px 12px;
+        border-radius: 20px;
+        opacity: 0;
+        transition: opacity 0.4s;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+      #save-status.visible { opacity: 1; }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <div id="loading-screen">Loading...</div>
+    <div id="save-status">💾 Progress saved</div>
+
+    <script>
+      const saveStatus = document.getElementById("save-status");
+      let saveTimer = null;
+
+      function flashSave() {
+        saveStatus.classList.add("visible");
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => saveStatus.classList.remove("visible"), 2000);
+      }
+
+      // ── Save bridge ──
+      // If opened via launcher (about:blank), proxy saves back to the
+      // launcher's real GitHub Pages origin so they persist.
+      const hasOpener = !!window.opener && window.opener !== window;
+
+      const _setItem = localStorage.setItem.bind(localStorage);
+      localStorage.setItem = function(key, value) {
+        _setItem(key, value);
+        if (hasOpener) {
+          try { window.opener.postMessage({ type: "SAVE_ITEM", key, value }, "*"); }
+          catch(e) {}
+        }
+        flashSave();
+      };
+
+      // Restore saves sent from launcher
+      window.addEventListener("message", (e) => {
+        if (!e.data || e.data.type !== "LOAD_SAVES") return;
+        for (const [key, value] of Object.entries(e.data.saves || {})) {
+          _setItem(key, value);
+        }
+      });
+
+      // Tell launcher we are ready
+      if (hasOpener) {
+        try { window.opener.postMessage({ type: "READY" }, "*"); }
+        catch(e) {}
+      }
+    </script>
+  </body>
+</html>
