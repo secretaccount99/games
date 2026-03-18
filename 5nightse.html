@@ -8,6 +8,27 @@
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
     <style>
+      /* ── Lock toggle button ── */
+      #lock-btn {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 9999;
+        background: #1a1a2e;
+        color: #e0e0e0;
+        border: 1px solid #555;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-family: sans-serif;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        transition: background 0.2s;
+        display: none; /* hidden until game loads */
+      }
+      #lock-btn:hover { background: #2a2a4e; }
+      #lock-btn.locked { background: #2a4e2a; border-color: #4caf50; color: #7fff7f; }
+
       /* ── Auto-save badge ── */
       #save-status {
         position: fixed;
@@ -26,27 +47,11 @@
         white-space: nowrap;
       }
       #save-status.visible { opacity: 1; }
-
-      /* ── Pointer-lock overlay ── */
-      #lock-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.55);
-        color: #fff;
-        font-size: 22px;
-        font-family: sans-serif;
-        align-items: center;
-        justify-content: center;
-        z-index: 8888;
-        pointer-events: none;
-      }
-      #lock-overlay.visible { display: flex; }
     </style>
   </head>
   <body>
 
-  <div id="lock-overlay">🖱️ Click the game to lock mouse</div>
+  <button id="lock-btn">🖱️ Lock Mouse</button>
   <div id="save-status">💾 Progress saved</div>
 
   <div id="loading-text"
@@ -66,32 +71,55 @@
 
   <script>
 /* ── Pointer Lock ── */
-const canvas      = document.querySelector("#unity-canvas");
-const lockOverlay = document.querySelector("#lock-overlay");
+const canvas  = document.querySelector("#unity-canvas");
+const lockBtn = document.getElementById("lock-btn");
 
 function requestLock() {
-  const fn = canvas.requestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock;
+  const fn = canvas.requestPointerLock ||
+             canvas.mozRequestPointerLock ||
+             canvas.webkitRequestPointerLock;
   if (fn) fn.call(canvas);
 }
+
+function exitLock() {
+  const fn = document.exitPointerLock ||
+             document.mozExitPointerLock ||
+             document.webkitExitPointerLock;
+  if (fn) fn.call(document);
+}
+
 function isLocked() {
   return document.pointerLockElement === canvas ||
          document.mozPointerLockElement === canvas ||
          document.webkitPointerLockElement === canvas;
 }
-function updateOverlay() { lockOverlay.classList.toggle("visible", !isLocked()); }
 
-const loadingObserver = new MutationObserver(() => {
-  if (!document.getElementById("loading-text")) {
-    lockOverlay.classList.add("visible");
-    loadingObserver.disconnect();
+function updateLockBtn() {
+  if (isLocked()) {
+    lockBtn.textContent = "🔓 Unlock Mouse";
+    lockBtn.classList.add("locked");
+  } else {
+    lockBtn.textContent = "🖱️ Lock Mouse";
+    lockBtn.classList.remove("locked");
+  }
+}
+
+// Toggle lock on button click
+lockBtn.addEventListener("click", () => {
+  if (isLocked()) exitLock(); else requestLock();
+});
+
+// Also allow pressing L key to toggle
+document.addEventListener("keydown", (e) => {
+  if (e.code === "KeyL" && document.getElementById("loading-text") === null) {
+    if (isLocked()) exitLock(); else requestLock();
   }
 });
-loadingObserver.observe(document.body, { childList: true, subtree: true });
 
-canvas.addEventListener("click", () => { if (!isLocked()) requestLock(); });
-document.addEventListener("pointerlockchange",       updateOverlay);
-document.addEventListener("mozpointerlockchange",    updateOverlay);
-document.addEventListener("webkitpointerlockchange", updateOverlay);
+document.addEventListener("pointerlockchange",       updateLockBtn);
+document.addEventListener("mozpointerlockchange",    updateLockBtn);
+document.addEventListener("webkitpointerlockchange", updateLockBtn);
+
 
 /* ── Auto-save indicator ── */
 const saveStatus = document.getElementById("save-status");
@@ -103,12 +131,12 @@ function flashSave() {
   saveTimer = setTimeout(() => saveStatus.classList.remove("visible"), 2000);
 }
 
-// Intercept localStorage writes — Unity uses these for all PlayerPrefs
 const _setItem = localStorage.setItem.bind(localStorage);
 localStorage.setItem = function(key, value) {
   _setItem(key, value);
   flashSave();
 };
+
 
 /* ── Unity Loader ── */
 var loadingText = document.querySelector("#loading-text");
@@ -191,6 +219,7 @@ function getParts(file, start, end) {
     }).then(() => {
       loadingBar.style.display = "none";
       loadingText.remove();
+      lockBtn.style.display = "block"; // show button once game is ready
     }).catch(alert);
   };
   document.body.appendChild(script);
