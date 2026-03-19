@@ -12,9 +12,6 @@
   <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, initial-scale=1.0, user-scalable=no, minimal-ui"/>
   <meta charset="utf-8"/>
   <link rel="stylesheet" type="text/css" href="style/index.css">
-  <script src="https://cdn.jsdelivr.net/gh/bubbls/youtube-playables@main/ytgame.js"></script>
-  <script src="game.js"></script>
-  <script>window.addEventListener("load", () => window.runGame());</script>
   <style>
     #save-status {
       position: fixed;
@@ -34,23 +31,111 @@
     }
     #save-status.visible { opacity: 1; }
   </style>
+  <script>
+  // ── Intercept ALL possible save methods before game loads ──
+
+  function flashSave() {
+    var el = document.getElementById("save-status");
+    if (!el) return;
+    el.classList.add("visible");
+    clearTimeout(el._t);
+    el._t = setTimeout(function() { el.classList.remove("visible"); }, 2000);
+  }
+
+  // 1. localStorage
+  var _lsSet = Storage.prototype.setItem;
+  Storage.prototype.setItem = function(k, v) { _lsSet.call(this, k, v); flashSave(); };
+
+  // 2. cookies
+  var _cookieDesc = Object.getOwnPropertyDescriptor(Document.prototype, "cookie")
+                 || Object.getOwnPropertyDescriptor(HTMLDocument.prototype, "cookie");
+  if (_cookieDesc && _cookieDesc.set) {
+    Object.defineProperty(document, "cookie", {
+      get: function() { return _cookieDesc.get.call(document); },
+      set: function(v) { _cookieDesc.set.call(document, v); flashSave(); },
+      configurable: true
+    });
+  }
+
+  // 3. IndexedDB — wrap IDBObjectStore.put and add
+  var _idbPut = IDBObjectStore.prototype.put;
+  var _idbAdd = IDBObjectStore.prototype.add;
+  IDBObjectStore.prototype.put = function() { flashSave(); return _idbPut.apply(this, arguments); };
+  IDBObjectStore.prototype.add = function() { flashSave(); return _idbAdd.apply(this, arguments); };
+
+  // 4. sessionStorage
+  var _ssSet = window.sessionStorage ? window.sessionStorage.setItem.bind(window.sessionStorage) : null;
+  if (_ssSet) {
+    window.sessionStorage.setItem = function(k, v) { _ssSet(k, v); flashSave(); };
+  }
+
+  // 5. Periodic snapshot backup to localStorage using IndexedDB data
+  // Backs up all IndexedDB databases to localStorage every 10 seconds
+  async function backupIndexedDB() {
+    if (!window.indexedDB || !window.indexedDB.databases) return;
+    try {
+      const dbs = await window.indexedDB.databases();
+      for (const dbInfo of dbs) {
+        const req = indexedDB.open(dbInfo.name);
+        req.onsuccess = function(e) {
+          const db = e.target.result;
+          const stores = Array.from(db.objectStoreNames);
+          stores.forEach(storeName => {
+            try {
+              const tx   = db.transaction(storeName, "readonly");
+              const store = tx.objectStore(storeName);
+              const getAll = store.getAll();
+              getAll.onsuccess = function() {
+                const key = `__idb_backup__${dbInfo.name}__${storeName}`;
+                localStorage.setItem(key, JSON.stringify(getAll.result));
+              };
+            } catch(e) {}
+          });
+        };
+      }
+    } catch(e) {}
+  }
+
+  // Restore IndexedDB from localStorage backup on page load
+  async function restoreIndexedDB() {
+    const prefix = "__idb_backup__";
+    const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
+    for (const key of keys) {
+      try {
+        const parts     = key.replace(prefix, "").split("__");
+        const dbName    = parts[0];
+        const storeName = parts[1];
+        const data      = JSON.parse(localStorage.getItem(key));
+        if (!data || !data.length) continue;
+
+        const req = indexedDB.open(dbName);
+        req.onsuccess = function(e) {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(storeName)) return;
+          try {
+            const tx    = db.transaction(storeName, "readwrite");
+            const store = tx.objectStore(storeName);
+            data.forEach(item => { try { store.put(item); } catch(e) {} });
+          } catch(e) {}
+        };
+      } catch(e) {}
+    }
+  }
+
+  // Run restore first, then start periodic backup
+  window.addEventListener("load", function() {
+    restoreIndexedDB().then(() => {
+      setInterval(backupIndexedDB, 10000);
+    });
+  });
+  </script>
 </head>
 <body>
   <div id="game"></div>
   <div id="save-status">Progress saved</div>
-  <script>
-    const saveStatus = document.getElementById("save-status");
-    let saveTimer = null;
-    function flashSave() {
-      saveStatus.classList.add("visible");
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => saveStatus.classList.remove("visible"), 2000);
-    }
-    const _setItem = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = function(key, value) {
-      _setItem(key, value);
-      flashSave();
-    };
-  </script>
+
+  <script src="https://cdn.jsdelivr.net/gh/bubbls/youtube-playables@main/ytgame.js"></script>
+  <script src="game.js"></script>
+  <script>window.addEventListener("load", () => window.runGame());</script>
 </body>
 </html>
