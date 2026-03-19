@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snow Rider 3D</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Vrkids2009/snowrider3d@6b7c2b9167b592528b221428414e63f06c4640b9/TemplateData/style.css">
+  <style>
+    #save-status {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 9999;
+      background: rgba(0,0,0,0.7);
+      color: #7fff7f;
+      font-size: 12px;
+      font-family: sans-serif;
+      padding: 4px 12px;
+      border-radius: 20px;
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #save-status.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="webgl-content">
+    <div id="gameContainer" style="width:100%;height:100%;margin:auto"></div>
+  </div>
+
+  <div id="save-status">Progress saved</div>
+
+  <script src="https://cdn.jsdelivr.net/gh/Vrkids2009/snowrider3d@6b7c2b9167b592528b221428414e63f06c4640b9/TemplateData/UnityProgress.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/Vrkids2009/snowrider3d@6b7c2b9167b592528b221428414e63f06c4640b9/Build/UnityLoader.js"></script>
+  <script>
+    var gameInstance = UnityLoader.instantiate(
+      "gameContainer",
+      "https://cdn.jsdelivr.net/gh/Vrkids2009/snowrider3d@6b7c2b9167b592528b221428414e63f06c4640b9/Build/SnowRider3D-gd-1.json",
+      { onProgress: UnityProgress, Module: { onRuntimeInitialized: function() { UnityProgress(gameInstance, "complete"); } } }
+    );
+
+    const saveStatus = document.getElementById("save-status");
+    let saveTimer = null;
+
+    function flashSave() {
+      saveStatus.classList.add("visible");
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => saveStatus.classList.remove("visible"), 2000);
+    }
+
+    const _setItem = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function(key, value) {
+      _setItem(key, value);
+      flashSave();
+    };
+  </script>
+</body>
+</html>
