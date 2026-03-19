@@ -6,8 +6,46 @@
   <title>1v1.lol</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; overflow: hidden; }
+    body { background: #000; overflow: hidden; font-family: sans-serif; }
 
+    /* ── Loading Screen ── */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: #0d0d0d;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      gap: 20px;
+      transition: opacity 0.5s;
+    }
+    #loading-screen.fade {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #loading-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    #loading-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Save badge ── */
     #save-status {
       position: fixed;
       bottom: 16px;
@@ -16,7 +54,6 @@
       background: rgba(0,0,0,0.7);
       color: #7fff7f;
       font-size: 12px;
-      font-family: sans-serif;
       padding: 4px 12px;
       border-radius: 20px;
       opacity: 0;
@@ -26,6 +63,7 @@
     }
     #save-status.visible { opacity: 1; }
 
+    /* ── Lock button ── */
     #lock-btn {
       position: fixed;
       top: 12px;
@@ -37,8 +75,8 @@
       border-radius: 8px;
       padding: 7px 13px;
       font-size: 12px;
-      font-family: sans-serif;
       cursor: pointer;
+      display: none;
       transition: background 0.2s;
     }
     #lock-btn:hover { background: #2a2a4e; }
@@ -47,24 +85,14 @@
 </head>
 <body>
 
+  <div id="loading-screen">
+    <div id="loading-title">1v1.lol</div>
+    <div class="spinner"></div>
+    <div id="loading-sub">Loading game...</div>
+  </div>
+
   <button id="lock-btn">Lock Mouse</button>
   <div id="save-status">Progress saved</div>
-
-  <script src="https://cdn.jsdelivr.net/gh/n-101-1/1@main/UnityProgress.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/n-101-1/1@main/2.7.js"></script>
-  <script>
-    var gameInstance;
-    window.onload = function() {
-      gameInstance = UnityLoader.instantiate("gameContainer", "https://cdn.jsdelivr.net/gh/n-101-1/1@main/2.7.json", {
-        onProgress: UnityProgress,
-        Module: {
-          onRuntimeInitialized: function() {
-            UnityProgress(gameInstance, "complete");
-          }
-        }
-      });
-    };
-  </script>
 
   <div class="webgl-content">
     <div id="gameContainer" style="width:100%;height:100vh;margin:0;padding:0;border:0;position:relative;background:#000;">
@@ -77,26 +105,21 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/gh/n-101-1/1@main/1firebase-app.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/n-101-1/1@main/1firebase-auth.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/n-101-1/1@main/1firebase-firestore.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/n-101-1/1@main/1firebase.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/n-101-1/1@main/1login.js?v=2"></script>
-  <script src="https://cdn.jsdelivr.net/gh/n-101-1/1@main/1firestore.js"></script>
-
   <script>
-    initializeFireBase();
-
-    function showAds() { console.log("show ads"); }
-    function requestNewAd() { unityAdFinishedCallback(); }
-    function unityAdFinishedCallback() {
-      try { if (gameInstance) gameInstance.SendMessage("AdsManager", "OnWebCallback"); }
-      catch (error) { console.log(error); }
+    /* ── Auto-save ── */
+    const saveStatus = document.getElementById("save-status");
+    let saveTimer = null;
+    function flashSave() {
+      saveStatus.classList.add("visible");
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => saveStatus.classList.remove("visible"), 2000);
     }
+    const _setItem = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function(key, value) { _setItem(key, value); flashSave(); };
 
     /* ── Mouse Lock ── */
-    const canvas = document.querySelector("#\\#canvas");
     const lockBtn = document.getElementById("lock-btn");
+    const canvas  = document.querySelector("#\\#canvas");
 
     function requestLock() {
       const fn = canvas.requestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock;
@@ -113,28 +136,85 @@
     }
     function updateBtn() {
       if (isLocked()) { lockBtn.textContent = "Unlock Mouse"; lockBtn.classList.add("locked"); }
-      else { lockBtn.textContent = "Lock Mouse"; lockBtn.classList.remove("locked"); }
+      else            { lockBtn.textContent = "Lock Mouse";   lockBtn.classList.remove("locked"); }
     }
-
     lockBtn.addEventListener("click", () => { if (isLocked()) exitLock(); else requestLock(); });
     document.addEventListener("keydown", e => { if (e.code === "KeyL") { if (isLocked()) exitLock(); else requestLock(); } });
-    document.addEventListener("pointerlockchange", updateBtn);
-    document.addEventListener("mozpointerlockchange", updateBtn);
+    document.addEventListener("pointerlockchange",       updateBtn);
+    document.addEventListener("mozpointerlockchange",    updateBtn);
     document.addEventListener("webkitpointerlockchange", updateBtn);
 
-    /* ── Auto-save ── */
-    const saveStatus = document.getElementById("save-status");
-    let saveTimer = null;
-    function flashSave() {
-      saveStatus.classList.add("visible");
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => saveStatus.classList.remove("visible"), 2000);
+    /* ── Load scripts in order, then init game ── */
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload  = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
     }
-    const _setItem = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = function(key, value) {
-      _setItem(key, value);
-      flashSave();
-    };
+
+    function hideLoader() {
+      const loader = document.getElementById("loading-screen");
+      loader.classList.add("fade");
+      setTimeout(() => { loader.style.display = "none"; }, 500);
+      lockBtn.style.display = "block";
+    }
+
+    function updateSub(text) {
+      document.getElementById("loading-sub").textContent = text;
+    }
+
+    (async () => {
+      try {
+        updateSub("Loading engine...");
+        await loadScript("https://cdn.jsdelivr.net/gh/n-101-1/1@main/UnityProgress.js");
+        await loadScript("https://cdn.jsdelivr.net/gh/n-101-1/1@main/2.7.js");
+
+        updateSub("Loading Firebase...");
+        await loadScript("https://cdn.jsdelivr.net/gh/n-101-1/1@main/1firebase-app.js");
+        await loadScript("https://cdn.jsdelivr.net/gh/n-101-1/1@main/1firebase-auth.js");
+        await loadScript("https://cdn.jsdelivr.net/gh/n-101-1/1@main/1firebase-firestore.js");
+        await loadScript("https://cdn.jsdelivr.net/gh/n-101-1/1@main/1firebase.js");
+        await loadScript("https://cdn.jsdelivr.net/gh/n-101-1/1@main/1login.js?v=2");
+        await loadScript("https://cdn.jsdelivr.net/gh/n-101-1/1@main/1firestore.js");
+
+        updateSub("Starting game...");
+        initializeFireBase();
+
+        window.gameInstance = UnityLoader.instantiate(
+          "gameContainer",
+          "https://cdn.jsdelivr.net/gh/n-101-1/1@main/2.7.json",
+          {
+            onProgress: (instance, progress) => {
+              UnityProgress(instance, progress);
+              if (progress !== "complete") {
+                const pct = Math.round(progress * 100);
+                updateSub(`Loading game... ${pct}%`);
+              }
+            },
+            Module: {
+              onRuntimeInitialized: function() {
+                UnityProgress(window.gameInstance, "complete");
+                hideLoader();
+              }
+            }
+          }
+        );
+
+      } catch (err) {
+        document.getElementById("loading-sub").textContent = "Failed to load. Try refreshing.";
+        console.error(err);
+      }
+    })();
+
+    function showAds() { console.log("show ads"); }
+    function requestNewAd() { unityAdFinishedCallback(); }
+    function unityAdFinishedCallback() {
+      try { if (window.gameInstance) window.gameInstance.SendMessage("AdsManager", "OnWebCallback"); }
+      catch (e) { console.log(e); }
+    }
   </script>
 </body>
 </html>
