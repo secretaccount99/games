@@ -24,7 +24,7 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
-      min-width: 260px;
+      min-width: 200px;
     }
 
     .widget-title {
@@ -54,7 +54,7 @@
 
     .stats {
       display: grid;
-      grid-template-columns: 1fr 0.5px 1fr 0.5px 1fr;
+      grid-template-columns: 1fr 0.5px 1fr;
       gap: 10px;
       align-items: center;
     }
@@ -116,44 +116,14 @@
         <div class="stat-number loading" id="today">—</div>
         <div class="stat-label">Today</div>
       </div>
-      <div class="divider"></div>
-      <div class="stat">
-        <div class="stat-number loading" id="week">—</div>
-        <div class="stat-label">This week</div>
-      </div>
     </div>
 
     <div class="last-updated" id="last-updated">Loading...</div>
   </div>
 
   <script>
-    const NS = "secretaccount99games";
-
-    function todayKey() {
-      const d = new Date();
-      return `day-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-    }
-
-    function weekKey() {
-      const d = new Date();
-      const jan1 = new Date(d.getFullYear(), 0, 1);
-      const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
-      return `week-${d.getFullYear()}${String(week).padStart(2,'0')}`;
-    }
-
-    // Hit a counter (increments by 1 and returns new value)
-    async function hit(key) {
-      const res = await fetch(`https://counterapi.com/api/${NS}/view/${key}`);
-      const data = await res.json();
-      return data.value;
-    }
-
-    // Read a counter without incrementing
-    async function read(key) {
-      const res = await fetch(`https://counterapi.com/api/${NS}/view/${key}?readOnly=true`);
-      const data = await res.json();
-      return data.value || 0;
-    }
+    const DOMAIN = "sites.google.com";
+    const PAGE   = "/ausdk12.org/classrooms/";
 
     function animateCount(el, target) {
       el.classList.remove("loading");
@@ -175,28 +145,35 @@
 
     async function init() {
       try {
-        const [total, today, week] = await Promise.all([
-          hit("total"),
-          hit(todayKey()),
-          hit(weekKey()),
-        ]);
+        const res = await fetch("https://visitor.6developer.com/visit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            domain: DOMAIN,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            page_path: PAGE,
+            page_title: "Classrooms Games Site"
+          })
+        });
+        const data = await res.json();
 
-        animateCount(document.getElementById("total"), total);
-        animateCount(document.getElementById("today"), today);
-        animateCount(document.getElementById("week"),  week);
+        animateCount(document.getElementById("total"), data.totalCount);
+        animateCount(document.getElementById("today"), data.todayCount);
         document.getElementById("last-updated").textContent = `Updated ${timeStr()}`;
 
-        // Refresh total every 30s without counting extra hits
+        // Refresh every 30s without counting extra hits
         setInterval(async () => {
           try {
-            const val = await read("total");
-            document.getElementById("total").textContent = val.toLocaleString();
+            const r = await fetch(`https://visitor.6developer.com/visit?domain=${DOMAIN}`);
+            const d = await r.json();
+            document.getElementById("total").textContent = d.totalCount.toLocaleString();
+            document.getElementById("today").textContent = d.todayCount.toLocaleString();
             document.getElementById("last-updated").textContent = `Updated ${timeStr()}`;
           } catch (_) {}
         }, 30000);
 
       } catch (_) {
-        ["total","today","week"].forEach(id => {
+        ["total", "today"].forEach(id => {
           const el = document.getElementById(id);
           el.textContent = "—";
           el.classList.remove("loading");
