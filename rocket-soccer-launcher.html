@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rocket Soccer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0d1117;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: sans-serif;
+    }
+    .card {
+      text-align: center;
+      color: #e0e0e0;
+    }
+    .card h1 {
+      font-size: 22px;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+    .card p {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 20px;
+    }
+    #play-btn {
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 32px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #play-btn:hover { background: #2ea043; }
+    #popup-warning {
+      display: none;
+      margin-top: 14px;
+      font-size: 12px;
+      color: #f0ad4e;
+    }
+    #popup-warning a { color: #58a6ff; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🚀 Rocket Soccer Derby</h1>
+    <p>Progress auto-saves in your browser</p>
+    <button id="play-btn">▶ Play</button>
+    <div id="popup-warning">
+      Popup blocked!
+      <a id="direct-link" href="#" target="_blank">Click here to open the game</a>
+    </div>
+  </div>
+
+  <script>
+    const GAME_URL = "https://secretaccount99.github.io/games/rocket-soccer.html";
+
+    document.getElementById("play-btn").addEventListener("click", () => {
+      const win = window.open(
+        GAME_URL,
+        "rocket-soccer",
+        "width=1280,height=720,resizable=yes,scrollbars=no"
+      );
+
+      if (!win || win.closed || typeof win.closed === "undefined") {
+        const warning = document.getElementById("popup-warning");
+        document.getElementById("direct-link").href = GAME_URL;
+        warning.style.display = "block";
+      } else {
+        win.focus();
+      }
+    });
+  </script>
+</body>
+</html>
