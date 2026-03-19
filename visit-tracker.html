@@ -25,6 +25,18 @@
       flex-direction: column;
       gap: 14px;
       min-width: 200px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .widget.glow {
+      border-color: rgba(255,255,255,0.9);
+      box-shadow: 0 0 12px 2px rgba(255,255,255,0.35);
+      animation: glow-fade 1.4s ease forwards;
+    }
+
+    @keyframes glow-fade {
+      0%   { border-color: rgba(255,255,255,0.9); box-shadow: 0 0 14px 3px rgba(255,255,255,0.4); }
+      100% { border-color: rgba(255,255,255,0.18); box-shadow: none; }
     }
 
     .widget-title {
@@ -100,7 +112,7 @@
   </style>
 </head>
 <body>
-  <div class="widget">
+  <div class="widget" id="widget">
     <div class="widget-title">
       <div class="pulse-dot"></div>
       Live visits
@@ -122,8 +134,16 @@
   </div>
 
   <script>
-    const DOMAIN = "sites.google.com";
-    const PAGE   = "/ausdk12.org/classrooms/";
+    const DOMAIN  = "sites.google.com";
+    const PAGE    = "/ausdk12.org/classrooms/";
+    const widget  = document.getElementById("widget");
+
+    function triggerGlow() {
+      widget.classList.remove("glow");
+      void widget.offsetWidth; // force reflow to restart animation
+      widget.classList.add("glow");
+      setTimeout(() => widget.classList.remove("glow"), 1400);
+    }
 
     function animateCount(el, target) {
       el.classList.remove("loading");
@@ -160,15 +180,20 @@
         animateCount(document.getElementById("total"), data.totalCount);
         animateCount(document.getElementById("today"), data.todayCount);
         document.getElementById("last-updated").textContent = `Updated ${timeStr()}`;
+        triggerGlow();
 
         // Refresh every 30s without counting extra hits
         setInterval(async () => {
           try {
             const r = await fetch(`https://visitor.6developer.com/visit?domain=${DOMAIN}`);
             const d = await r.json();
-            document.getElementById("total").textContent = d.totalCount.toLocaleString();
-            document.getElementById("today").textContent = d.todayCount.toLocaleString();
+            const totalEl = document.getElementById("total");
+            const todayEl = document.getElementById("today");
+            const prevTotal = parseInt(totalEl.textContent.replace(/,/g, "")) || 0;
+            totalEl.textContent = d.totalCount.toLocaleString();
+            todayEl.textContent = d.todayCount.toLocaleString();
             document.getElementById("last-updated").textContent = `Updated ${timeStr()}`;
+            if (d.totalCount > prevTotal) triggerGlow();
           } catch (_) {}
         }, 30000);
 
