@@ -54,12 +54,16 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr 0.5px 1fr 0.5px 1fr;
       gap: 10px;
+      align-items: center;
     }
 
-    .stat {
-      text-align: center;
+    .stat { text-align: center; }
+
+    .divider {
+      background: rgba(255,255,255,0.12);
+      align-self: stretch;
     }
 
     .stat-number {
@@ -86,12 +90,6 @@
       text-transform: uppercase;
       color: rgba(255,255,255,0.35);
       margin-top: 5px;
-    }
-
-    .divider {
-      width: 0.5px;
-      background: rgba(255,255,255,0.12);
-      align-self: stretch;
     }
 
     .last-updated {
@@ -129,24 +127,32 @@
   </div>
 
   <script>
-    const NAMESPACE = "secretaccount99-games-site";
+    const NS = "secretaccount99games";
 
     function todayKey() {
       const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      return `day-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
     }
 
     function weekKey() {
       const d = new Date();
       const jan1 = new Date(d.getFullYear(), 0, 1);
       const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
-      return `${d.getFullYear()}-W${String(week).padStart(2,'0')}`;
+      return `week-${d.getFullYear()}${String(week).padStart(2,'0')}`;
     }
 
+    // Hit a counter (increments by 1 and returns new value)
     async function hit(key) {
-      const res = await fetch(`https://api.countapi.xyz/hit/${NAMESPACE}/${key}`);
+      const res = await fetch(`https://counterapi.com/api/${NS}/view/${key}`);
       const data = await res.json();
       return data.value;
+    }
+
+    // Read a counter without incrementing
+    async function read(key) {
+      const res = await fetch(`https://counterapi.com/api/${NS}/view/${key}?readOnly=true`);
+      const data = await res.json();
+      return data.value || 0;
     }
 
     function animateCount(el, target) {
@@ -171,22 +177,21 @@
       try {
         const [total, today, week] = await Promise.all([
           hit("total"),
-          hit(`day-${todayKey()}`),
-          hit(`week-${weekKey()}`),
+          hit(todayKey()),
+          hit(weekKey()),
         ]);
+
         animateCount(document.getElementById("total"), total);
         animateCount(document.getElementById("today"), today);
         animateCount(document.getElementById("week"),  week);
         document.getElementById("last-updated").textContent = `Updated ${timeStr()}`;
 
+        // Refresh total every 30s without counting extra hits
         setInterval(async () => {
           try {
-            const res  = await fetch(`https://api.countapi.xyz/get/${NAMESPACE}/total`);
-            const data = await res.json();
-            if (data.value) {
-              document.getElementById("total").textContent = data.value.toLocaleString();
-              document.getElementById("last-updated").textContent = `Updated ${timeStr()}`;
-            }
+            const val = await read("total");
+            document.getElementById("total").textContent = val.toLocaleString();
+            document.getElementById("last-updated").textContent = `Updated ${timeStr()}`;
           } catch (_) {}
         }, 30000);
 
