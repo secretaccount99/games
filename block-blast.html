@@ -8,6 +8,25 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/genizy/bl/TemplateData/style.css">
   <link rel="manifest" href="https://cdn.jsdelivr.net/gh/genizy/bl/manifest.webmanifest">
   <style>
+    /* ── Fix canvas offset ── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center; background: #000; }
+
+    #unity-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    #unity-canvas {
+      display: block;
+      /* Let the canvas size itself naturally — no top/left offset */
+    }
+
     #save-status {
       position: fixed;
       bottom: 16px;
