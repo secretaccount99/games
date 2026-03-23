@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <base href="https://cdn.jsdelivr.net/gh/bubbls/UGS-Assets@main/plinko/">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  
+  <link href="./_app/immutable/assets/0.DpmEpyNL.css" rel="stylesheet">
+  <link href="./_app/immutable/assets/3.Di7wuimg.css" rel="stylesheet">
+  
+  <title>Plinko - Save Enabled</title>
+
+  <script>
+    // --- PERSISTENCE LAYER ---
+    window.UGS_SAVE_KEY = "ugs_plinko_balance";
+    
+    // Function to get balance
+    window.getSavedBalance = function() {
+      return localStorage.getItem(window.UGS_SAVE_KEY) || "200.00";
+    };
+
+    // Function to save balance
+    window.saveBalance = function(amount) {
+      localStorage.setItem(window.UGS_SAVE_KEY, amount);
+    };
+
+    // Auto-Sync Observer: Watches the screen for balance changes and saves them
+    const observer = new MutationObserver(() => {
+      const balanceElement = document.querySelector('.min-w-16.text-right');
+      if (balanceElement) {
+        const currentVal = balanceElement.innerText.replace('$', '').trim();
+        if (currentVal !== window.lastSavedVal) {
+          window.saveBalance(currentVal);
+          window.lastSavedVal = currentVal;
+        }
+      }
+    });
+
+    window.onload = () => {
+      // Restore balance on load
+      const balanceElement = document.querySelector('.min-w-16.text-right');
+      if (balanceElement) {
+        balanceElement.innerText = window.getSavedBalance();
+      }
+      observer.observe(document.body, { childList: true, subtree: true });
+    };
+  </script>
+</head>
+
+<body data-sveltekit-preload-data="hover" class="bg-slate-900">
+  <div style="display: contents">
+    <div class="relative flex min-h-dvh w-full flex-col">
+      <nav class="sticky top-0 z-10 w-full bg-gray-700 px-5 drop-shadow-lg">
+        <div class="mx-auto flex h-14 max-w-7xl items-center justify-between">
+          <div class="mx-auto">
+            <div class="flex overflow-hidden rounded-md">
+              <div class="flex gap-2 bg-slate-900 px-3 py-2 text-sm font-semibold tabular-nums text-white sm:text-base">
+                <span class="select-none text-gray-500">$</span> 
+                <span class="min-w-16 text-right" id="balance-display">200.00</span>
+              </div> 
+              <button class="bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">Add</button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="flex-1 px-5">
+        <div class="mx-auto mt-5 min-w-[300px] max-w-xl drop-shadow-xl md:mt-10 lg:max-w-7xl">
+          <div class="flex flex-col-reverse overflow-hidden rounded-lg lg:w-full lg:flex-row">
+            <div class="flex flex-col gap-5 bg-slate-700 p-3 lg:max-w-80">
+                <div class="relative">
+                    <label class="text-sm font-medium text-slate-300">Bet Amount</label>
+                    <input id="betAmount" value="1.00" type="number" class="w-full rounded-md bg-slate-900 py-2 text-white px-3">
+                </div>
+                <button class="touch-manipulation rounded-md bg-green-500 py-3 font-semibold text-slate-900 hover:bg-green-400">Drop Ball</button>
+            </div>
+
+            <div class="flex-1 bg-gray-900 relative">
+               <canvas id="plinko-canvas" width="760" height="570" class="mx-auto w-full"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      {
+        __sveltekit_1ahsfp = { base: new URL(".", location).pathname.slice(0, -1) };
+        const element = document.currentScript.parentElement;
+        Promise.all([
+          import("./_app/immutable/entry/start.Bx-xHRpc.js"),
+          import("./_app/immutable/entry/app.DcW8juCo.js")
+        ]).then(([kit, app]) => {
+          kit.start(app, element, {
+            node_ids: [0, 3],
+            data: [null, null],
+            form: null, error: null
+          });
+        });
+      }
+    </script>
+  </div>
+</body>
+</html>
