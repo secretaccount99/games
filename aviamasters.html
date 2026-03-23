@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Aviamasters - Fixed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    
+    <base href="https://cdn.jsdelivr.net/gh/bubbls/UGS-Assets@main/aviamaster/">
+
+    <script type="text/javascript">
+        // SAVE SYSTEM: Check if we have a saved balance in the browser
+        const savedBalance = localStorage.getItem('aviamasters_fun_balance');
+
+        window.__OPTIONS__ = {
+            "server_id": "bitstarz",
+            "env": "production",
+            "game": "casual/aviamasters",
+            "identifier": "Aviamasters",
+            "title": "Aviamasters",
+            "currency": "FUN",
+            "balance": savedBalance ? parseFloat(savedBalance) : 100000, // Starts with 100k if new
+            "locale": "en",
+            "api": "https://demo.bgaming-network.com/api/Aviamasters/2195171/7275099e-391f-4619-96b3-c3348eaa843a",
+            "game_bundle_source": "html/Aviamasters/bundle.js",
+            "resources_path": "html/Aviamasters"
+        };
+
+        // BUG FIX: Auto-save balance to LocalStorage when the window closes
+        window.onbeforeunload = function() {
+            if (window.currentBalance) {
+                localStorage.setItem('aviamasters_fun_balance', window.currentBalance);
+            }
+            // Signal the server to close session
+            navigator.sendBeacon(window.__OPTIONS__.api, JSON.stringify({ command: 'close_session' }));
+        };
+    </script>
+
+    <style>
+        body { background: #000; margin: 0; overflow: hidden; }
+        .preloader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff2c2c; font-family: monospace; text-align: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #ff2c2c; border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div id="loader" class="preloader">
+    <div class="spinner"></div>
+    <div>LOADING DATA...</div>
+</div>
+
+<script src="html/Aviamasters/loader.js?1759195664" crossorigin="anonymous"></script>
+<script type="text/javascript">
+    // Dynamically load the main game bundle from the CDN base
+    const mainScript = document.createElement('script');
+    mainScript.src = window.__OPTIONS__.game_bundle_source;
+    mainScript.crossOrigin = "anonymous";
+    mainScript.onload = () => { document.getElementById('loader').style.display = 'none'; };
+    document.body.appendChild(mainScript);
+</script>
+
+</body>
+</html>
