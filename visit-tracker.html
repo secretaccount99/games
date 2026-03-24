@@ -2,113 +2,134 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Visit Tracker</title>
+  <title>Global Visit Tracker</title>
   <style>
-    /* Keeping your original sleek styling */
+    /* Clean, modern glassmorphism styling */
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: transparent; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background: transparent; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
     
     .widget {
       background: rgba(255,255,255,0.07);
       border: 0.5px solid rgba(255,255,255,0.18);
-      backdrop-filter: blur(10px); /* Added blur for better look */
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border-radius: 14px;
-      padding: 20px 28px;
+      padding: 18px 24px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      min-width: 220px;
+      gap: 12px;
+      min-width: 230px;
     }
 
-    .widget.glow {
-      animation: glow-fade 1.4s ease forwards;
-    }
-
+    /* Glow effect for successful hits */
+    .widget.glow { animation: glow-fade 1.4s ease forwards; }
     @keyframes glow-fade {
-      0% { border-color: rgba(255,255,255,0.9); box-shadow: 0 0 14px 3px rgba(255,255,255,0.3); }
+      0% { border-color: rgba(255,255,255,0.8); box-shadow: 0 0 15px rgba(255,255,255,0.2); }
       100% { border-color: rgba(255,255,255,0.18); box-shadow: none; }
     }
 
-    .widget-title { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 7px; }
+    .widget-title { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 8px; }
     .pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-    .stats { display: grid; grid-template-columns: 1fr 0.5px 1fr; gap: 10px; align-items: center; }
+    .stats { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 15px; align-items: center; }
     .stat { text-align: center; }
-    .divider { background: rgba(255,255,255,0.12); height: 30px; }
-    .stat-number { font-size: 28px; font-weight: 700; color: #ffffff; font-variant-numeric: tabular-nums; }
-    .stat-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-top: 5px; }
-    .last-updated { font-size: 10px; color: rgba(255,255,255,0.25); text-align: center; }
+    .divider { background: rgba(255,255,255,0.1); height: 25px; }
+    .stat-number { font-size: 26px; font-weight: 700; color: #ffffff; font-variant-numeric: tabular-nums; line-height: 1; }
+    .stat-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-top: 6px; }
+
+    /* The Live Sync Indicator */
+    .footer-text { font-size: 9px; color: rgba(255,255,255,0.2); text-align: center; margin-top: 2px; transition: color 0.3s; }
+    .footer-text.syncing { color: #4ade80; font-weight: bold; }
   </style>
 </head>
 <body>
 
   <div class="widget" id="widget">
-    <div class="widget-title"><div class="pulse-dot"></div>Live Network</div>
+    <div class="widget-title"><div class="pulse-dot"></div> Global Traffic</div>
     <div class="stats">
       <div class="stat">
-        <div class="stat-number" id="total">...</div>
-        <div class="stat-label">Total</div>
+        <div class="stat-number" id="today">...</div>
+        <div class="stat-label">Today</div>
       </div>
       <div class="divider"></div>
       <div class="stat">
-        <div class="stat-number" id="session">...</div>
-        <div class="stat-label">Session</div>
+        <div class="stat-number" id="all-time">...</div>
+        <div class="stat-label">All Time</div>
       </div>
     </div>
-    <div class="last-updated" id="status">Syncing...</div>
+    <div class="footer-text" id="status">Syncing...</div>
   </div>
 
   <script>
-    // Replace 'secret_games_site' with a unique name for your site
-    const NAMESPACE = "secretaccount99_games_v1";
-    const KEY = "visits";
+    // Configuration - Using a unique v4 namespace
+    const NAMESPACE = "secret99_global_v4";
+    const COOLDOWN_MINUTES = 20;
+
+    // Daily Key format: hits_YYYY-MM-DD
+    const dateStr = new Date().toISOString().split('T')[0]; 
+    const TODAY_KEY = `hits_${dateStr}`;
+    const TOTAL_KEY = "total_hits_permanent";
+
     const widget = document.getElementById("widget");
+    const todayEl = document.getElementById("today");
+    const totalEl = document.getElementById("all-time");
+    const statusEl = document.getElementById("status");
 
-    function timeStr() {
-      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
+    async function fetchData(isNewVisit) {
+      statusEl.classList.add("syncing");
+      statusEl.textContent = "SYNCING LIVE DATA...";
 
-    function triggerGlow() {
-      widget.classList.remove("glow");
-      void widget.offsetWidth;
-      widget.classList.add("glow");
-    }
-
-    // This session counter resets if they close the tab, 
-    // but the TOTAL counter stays forever.
-    let sessionVisits = parseInt(sessionStorage.getItem('s_count')) || 0;
-    sessionVisits++;
-    sessionStorage.setItem('s_count', sessionVisits);
-    document.getElementById("session").textContent = sessionVisits;
-
-    async function updateStats() {
       try {
-        // This increments the count by 1 every time the page loads
-        const response = await fetch(`https://api.countapi.xyz/hit/${NAMESPACE}/${KEY}`);
-        const data = await response.json();
+        let todayData, totalData;
+
+        if (isNewVisit) {
+          // Both users and counters hit the same global keys
+          todayData = await fetch(`https://api.countapi.xyz/hit/${NAMESPACE}/${TODAY_KEY}`).then(r => r.json());
+          totalData = await fetch(`https://api.countapi.xyz/hit/${NAMESPACE}/${TOTAL_KEY}`).then(r => r.json());
+          widget.classList.add("glow");
+          setTimeout(() => widget.classList.remove("glow"), 1400);
+        } else {
+          // Fetch existing global data without adding a new hit
+          todayData = await fetch(`https://api.countapi.xyz/get/${NAMESPACE}/${TODAY_KEY}`).then(r => r.json());
+          totalData = await fetch(`https://api.countapi.xyz/get/${NAMESPACE}/${TOTAL_KEY}`).then(r => r.json());
+        }
+
+        todayEl.textContent = (todayData.value || 0).toLocaleString();
+        totalEl.textContent = (totalData.value || 0).toLocaleString();
         
-        document.getElementById("total").textContent = data.value.toLocaleString();
-        document.getElementById("status").textContent = `Updated ${timeStr()}`;
-        triggerGlow();
+        setTimeout(() => {
+          statusEl.classList.remove("syncing");
+          statusEl.textContent = `LIVE UPDATED • ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+        }, 800);
+
       } catch (err) {
-        document.getElementById("total").textContent = "Error";
-        document.getElementById("status").textContent = "API Offline";
-        console.error("CountAPI Error:", err);
+        todayEl.textContent = "—";
+        totalEl.textContent = "—";
+        statusEl.textContent = "OFFLINE";
+        statusEl.classList.remove("syncing");
       }
     }
 
-    // Run on load
-    updateStats();
+    function init() {
+      const now = Date.now();
+      const lastVisit = localStorage.getItem('global_visit_ts');
+      const cooldownMs = COOLDOWN_MINUTES * 60 * 1000;
 
-    // Refresh display every 60 seconds without adding extra "hits"
-    setInterval(async () => {
-      try {
-        const response = await fetch(`https://api.countapi.xyz/get/${NAMESPACE}/${KEY}`);
-        const data = await response.json();
-        document.getElementById("total").textContent = data.value.toLocaleString();
-      } catch (e) {}
-    }, 60000);
+      // Unique visit logic: Only count if last visit was > 20 mins ago
+      if (!lastVisit || (now - lastVisit > cooldownMs)) {
+        localStorage.setItem('global_visit_ts', now);
+        fetchData(true);
+      } else {
+        fetchData(false);
+      }
+    }
+
+    // Initialize on load
+    init();
+
+    // Global refresh every 60 seconds
+    setInterval(() => fetchData(false), 60000);
   </script>
 </body>
 </html>
